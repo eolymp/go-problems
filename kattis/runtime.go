@@ -1,0 +1,136 @@
+package kattis
+
+// LanguageMapping kattis to eolymp language name mapping
+var LanguageMapping = map[string]string{
+	"ada":        "ada",
+	"bash":       "bash",
+	"c":          "c",
+	"ctd":        "ctd",
+	"cpp":        "cpp",
+	"csharp":     "csharp",
+	"d":          "d",
+	"dart":       "dart",
+	"elixir":     "elixir",
+	"erlang":     "erlang",
+	"go":         "go",
+	"haskell":    "haskell",
+	"java":       "java",
+	"javascript": "js",
+	"julia":      "julia",
+	"kotlin":     "kotlin",
+	"lua":        "lua",
+	"nim":        "nim",
+	"objectivec": "objectivec",
+	"ocaml":      "ocaml",
+	"pascal":     "pascal",
+	"perl":       "perl",
+	"php":        "php",
+	"python2":    "python",
+	"python3":    "python",
+	"racket":     "racket",
+	"ruby":       "ruby",
+	"rust":       "rust",
+	"scala":      "scala",
+	"swift":      "swift",
+	"typescript": "typescript",
+	"zig":        "zig",
+}
+
+// ReverseLanguageMapping eolymp language to kattis name mapping
+func ReverseLanguageMapping(t string) (string, bool) {
+	if v, ok := LanguageMapping[t]; ok {
+		return v, true
+	}
+	return "", false
+}
+
+// LanguageExtensions eolymp language to file extension
+var LanguageExtensions = map[string]string{
+	"ada":        "adb",
+	"bash":       "sh",
+	"c":          "c",
+	"ctd":        "ctd",
+	"cpp":        "cpp",
+	"csharp":     "cs",
+	"d":          "d",
+	"dart":       "dart",
+	"elixir":     "ex",
+	"erlang":     "erl",
+	"go":         "go",
+	"haskell":    "hs",
+	"java":       "java",
+	"js":         "js",
+	"julia":      "jl",
+	"kotlin":     "kt",
+	"lua":        "lua",
+	"nim":        "nim",
+	"objectivec": "m",
+	"ocaml":      "ml",
+	"pascal":     "pas",
+	"perl":       "pl",
+	"php":        "php",
+	"python":     "py",
+	"racket":     "rkt",
+	"ruby":       "rb",
+	"rust":       "rs",
+	"scala":      "scala",
+	"swift":      "swift",
+	"typescript": "ts",
+	"zig":        "zig",
+}
+
+// kattis to eolymp runtime name mapping
+var RuntimeMapping = map[string]string{
+	"ada":        "ada:2023-gnat",
+	"bash":       "bash:5",
+	"c":          "c:17-gnu10",
+	"ctd":        "ctd",
+	"cpp":        "cpp:17-gnu10",
+	"csharp":     "csharp:5-dotnet",
+	"d":          "d:1-gdc",
+	"dart":       "dart:3",
+	"elixir":     "elixir:1.15",
+	"erlang":     "erlang:25",
+	"go":         "go:1.22",
+	"haskell":    "haskell:9.2",
+	"java":       "java:1.21",
+	"js":         "js:20",
+	"julia":      "julia:1.10",
+	"kotlin":     "kotlin:1.9",
+	"lua":        "lua:5.4",
+	"nim":        "nim:2.0",
+	"objectivec": "objectivec:14-clang",
+	"ocaml":      "ocaml:4.14",
+	"pascal":     "pascal:3.2",
+	"perl":       "perl:5.36",
+	"php":        "php:8.2",
+	"python":     "python:3.12-python",
+	"racket":     "racket:8.12",
+	"ruby":       "ruby:3.3",
+	"rust":       "rust:1.78",
+	"scala":      "scala:3.3",
+	"swift":      "swift:5.9",
+	"typescript": "typescript:5",
+	"zig":        "zig:0.12",
+}
+
+// TemplateMapping eolymp language mapping to runtimes for templates
+// ie. what runtimes should template in given language be generated for
+var TemplateMapping = map[string][]string{
+	"c":       {"c:17-gnu10"},
+	"cpp":     {"cpp:17-gnu10", "cpp:20-gnu14"},
+	"csharp":  {"csharp:5-dotnet"},
+	"go":      {"go:1.22"},
+	"haskell": {"haskell:9.2"},
+	"java":    {"java:1.21"},
+	"js":      {"js:20"},
+	"kotlin":  {"kotlin:1.9"},
+	"lua":     {"lua:5.4"},
+	"pascal":  {"pascal:3.2"},
+	"perl":    {"perl:5.36"},
+	"php":     {"php:8.2"},
+	"python":  {"python:3.12-python"},
+	"ruby":    {"ruby:3.3"},
+	"rust":    {"rust:1.78"},
+	"swift":   {"swift:5.9"},
+}
