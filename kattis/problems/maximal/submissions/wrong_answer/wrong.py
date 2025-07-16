@@ -1,0 +1,1 @@
+print('Forty-Two')
