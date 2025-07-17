@@ -18,9 +18,9 @@ import (
 	// "google.golang.org/protobuf/proto"
 )
 
-// used to test the problem packages in the kattis directory 
+// used to test the problem packages in the kattis directory
 func (p *ProblemLoader) testFetch(ctx context.Context, link string) (*atlaspb.Snapshot, error) {
-	return p.snapshot(ctx, link) // nothing to download/unpack
+	return p.Snapshot(ctx, link) // nothing to download/unpack
 }
 
 func TestProblemLoader_Snapshot_maximal(t *testing.T) {

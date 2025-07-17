@@ -71,7 +71,7 @@ func resolveRoot(path string) (string, error) {
 	return "", fmt.Errorf("problem.yaml not found")
 }
 
-func (p *ProblemLoader) fetch(ctx context.Context, link string) (*atlaspb.Snapshot, error) {
+func (p *ProblemLoader) Fetch(ctx context.Context, link string) (*atlaspb.Snapshot, error) {
 	// create workspace
 	path := filepath.Join(os.TempDir(), uuid.New().String())
 	if err := os.Mkdir(path, 0777); err != nil {
@@ -104,11 +104,11 @@ func (p *ProblemLoader) fetch(ctx context.Context, link string) (*atlaspb.Snapsh
 		return nil, err
 	}
 
-	return p.snapshot(ctx, path)
+	return p.Snapshot(ctx, path)
 }
 
-// Snapshot reads problem specification from the unpacked problem archive and returns a snapshot of the problem.
-func (p *ProblemLoader) snapshot(ctx context.Context, path string) (*atlaspb.Snapshot, error) {
+// Snapshot reads problem specification from the unpacked problem archive and returns a Snapshot of the problem.
+func (p *ProblemLoader) Snapshot(ctx context.Context, path string) (*atlaspb.Snapshot, error) {
 	file, err := os.Open(filepath.Join(path, "problem.yaml"))
 	if err != nil {
 		return nil, fmt.Errorf("unable to open problem.yaml: %w", err)
@@ -184,10 +184,6 @@ func (p *ProblemLoader) snapshot(ctx context.Context, path string) (*atlaspb.Sna
 		Solutions:   solutions,
 		Scripts:     scripts,
 	}, nil
-}
-
-func (p *ProblemLoader) Snapshot(ctx context.Context, path string) (*atlaspb.Snapshot, error) {
-	return p.snapshot(ctx, path)
 }
 
 func (p *ProblemLoader) download(ctx context.Context, path string, link string) error {
