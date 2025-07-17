@@ -186,6 +186,10 @@ func (p *ProblemLoader) snapshot(ctx context.Context, path string) (*atlaspb.Sna
 	}, nil
 }
 
+func (p *ProblemLoader) Snapshot(ctx context.Context, path string) (*atlaspb.Snapshot, error) {
+	return p.snapshot(ctx, path)
+}
+
 func (p *ProblemLoader) download(ctx context.Context, path string, link string) error {
 	origin, err := url.Parse(link)
 	if err != nil {
