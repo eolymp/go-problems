@@ -48,8 +48,8 @@ func TestProblemLoader_Snapshot_maximal(t *testing.T) {
 	})
 
 	t.Run("tests", func(t *testing.T) {
-		if got := len(snap.GetTests()); got != 4 {
-			t.Fatalf("want 4 tests, got %d", got)
+		if got := len(snap.GetTests()); got != 5 {
+			t.Fatalf("want 5 tests, got %d", got)
 		}
 	})
 
@@ -74,8 +74,8 @@ func TestProblemLoader_Snapshot_passfail(t *testing.T) {
 	}
 
 	t.Run("tests", func(t *testing.T) {
-		if got := len(snap.GetTests()); got != 3 {
-			t.Fatalf("want 3 tests, got %d", got)
+		if got := len(snap.GetTests()); got != 4 {
+			t.Fatalf("want 4 tests, got %d", got)
 		}
 	})
 
@@ -101,6 +101,12 @@ func TestProblemLoader_Snapshot_passfail(t *testing.T) {
 			t.Fatalf("passfail should import a checker")
 		}
 	})
+
+	t.Run("name", func(t *testing.T) {
+		if snap.GetStatements()[0].GetTitle() != "Sample problem" {
+			t.Fatalf("wrong name, the name is: %s",snap.GetStatements()[0].GetTitle())
+		}
+	})
 }
 
 func TestProblemLoader_Snapshot_scoring(t *testing.T) {
@@ -117,8 +123,8 @@ func TestProblemLoader_Snapshot_scoring(t *testing.T) {
 	}
 
 	t.Run("tests", func(t *testing.T) {
-		if got := len(snap.GetTests()); got != 6 {
-			t.Fatalf("want 6 tests, got %d", got)
+		if got := len(snap.GetTests()); got != 7 {
+			t.Fatalf("want 7 tests, got %d", got)
 		}
 	})
 
@@ -149,14 +155,58 @@ func TestProblemLoader_Snapshot_submit_answer(t *testing.T) {
 
 	ldr := NewProblemLoader(MockUploader(), MockLogger(t))
 	snap, err := ldr.testFetch(ctx, URL)
-	t.Run("expect-error", func(t *testing.T) {
-		if err == nil {
-			t.Fatalf("want error because data/secret missing, got <nil>")
-		}
-	})
+
+	if err != nil {
+		t.Fatalf("Fetch: %v", err)
+	}
+
 	t.Run("tests", func(t *testing.T) {
 		if got := len(snap.GetTests()); got != 0 {
 			t.Fatalf("want 0 tests, got %d", got)
+		}
+	})
+}
+
+func TestProblemLoader_Snapshot_darkride(t *testing.T) {
+	if testing.Short() {
+		t.Skip("network test")
+	}
+	ctx := context.Background()
+	URL := filepath.Join("problems", "egoi-2025", "day1", "darkride")
+
+	ldr := NewProblemLoader(MockUploader(), MockLogger(t))
+	snap, err := ldr.testFetch(ctx, URL)
+	if err != nil {
+		t.Fatalf("Fetch: %v", err)
+	}
+
+	t.Run("tests", func(t *testing.T) {
+		if got := len(snap.GetTests()); got < 20 {
+			t.Fatalf("want more thab 20 tests, got %d", got)
+		}
+	})
+
+	t.Run("validator", func(t *testing.T) {
+		if snap.GetValidator() == nil {
+			t.Fatalf("the problem  should import a validator")
+		}
+	})
+
+	t.Run("checker", func(t *testing.T) {
+		if snap.GetChecker() == nil {
+			t.Fatalf("the problem should import a checker")
+		}
+	})
+
+	t.Run("attachments", func(t *testing.T) {
+		if snap.GetAttachments() == nil {
+			t.Fatalf("the problem should import attachments")
+		}
+	})
+
+	t.Run("name", func(t *testing.T) {
+		if snap.GetStatements()[0].GetTitle() != "darkride" {
+			t.Fatalf("wrong name, the name is: %s",snap.GetStatements()[0].GetTitle())
 		}
 	})
 }

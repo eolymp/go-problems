@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-// string or []string
 type StringSeq struct {
 	One string
 	Seq []string
@@ -37,7 +36,6 @@ func (s StringSeq) AsSlice() []string {
 	return nil
 }
 
-// string or []string or map[string]string
 type StringSeqMap struct {
 	String string
 	Seq    []string
@@ -63,7 +61,6 @@ func (m *StringSeqMap) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return fmt.Errorf("must be string, sequence, or map")
 }
 
-// string OR map(locale→string)
 type StringOrMap struct {
 	One string
 	Map map[string]string
@@ -83,7 +80,6 @@ func (n *StringOrMap) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return fmt.Errorf("name must be string or map(locale→string)")
 }
 
-// "Full Name" or mapping {name:,email:,orcid:,kattis:}
 type Person struct {
 	Name   string `yaml:"name"`
 	Email  string `yaml:"email,omitempty"`
@@ -104,7 +100,6 @@ func (p *Person) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return unmarshal((*_alias)(p))
 }
 
-// single person or sequence
 type PersonList []Person
 
 func (pl *PersonList) UnmarshalYAML(um func(interface{}) error) error {
@@ -123,7 +118,6 @@ func (pl *PersonList) UnmarshalYAML(um func(interface{}) error) error {
 	return fmt.Errorf("person list must be person or sequence of persons")
 }
 
-// map lang->persons or person list
 type Translators struct {
 	Default PersonList
 	LangMap map[string]PersonList

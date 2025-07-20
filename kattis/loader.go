@@ -315,7 +315,7 @@ func (p *ProblemLoader) cleanup(path string) {
 //  2. otherwise scan every file in the directory
 //  3. if no mappable program file is found fall back to the default checker
 func (p *ProblemLoader) checker(ctx context.Context, path string) (*atlaspb.Checker, error) {
-	valDir := filepath.Join(path, "output_validator")
+	valDir := filepath.Join(path, "output_validators")
 
 	entries, err := os.ReadDir(valDir)
 	if err != nil {
@@ -325,6 +325,17 @@ func (p *ProblemLoader) checker(ctx context.Context, path string) (*atlaspb.Chec
 			return &atlaspb.Checker{Type: executorpb.Checker_TOKENS, Precision: 0, CaseSensitive: false}, nil
 		}
 		return nil, err
+	}
+
+	for _, e := range entries {
+		if e.IsDir() {
+			valDir = filepath.Join(valDir, e.Name())
+			entries, err = os.ReadDir(valDir)
+			if err != nil {
+				return nil, err
+			}
+			break
+		}
 	}
 
 	// ext to lang
@@ -398,6 +409,17 @@ func (p *ProblemLoader) validator(ctx context.Context, path string) (*atlaspb.Va
 		return nil, err
 	}
 
+	for _, e := range entries {
+		if e.IsDir() {
+			valDir = filepath.Join(valDir, e.Name())
+			entries, err = os.ReadDir(valDir)
+			if err != nil {
+				return nil, err
+			}
+			break
+		}
+	}
+
 	extToLang := map[string]string{}
 	for lang, ext := range LanguageExtensions {
 		extToLang[ext] = lang
@@ -457,9 +479,19 @@ func (p *ProblemLoader) validator(ctx context.Context, path string) (*atlaspb.Va
 // scans <path>/statement/ and converts every file it finds
 func (p *ProblemLoader) statements(ctx context.Context, path string, spec *Specification) (stmts []*atlaspb.Statement, err error) {
 	dir := filepath.Join(path, "statement")
+
+	if _, statErr := os.Stat(dir); os.IsNotExist(statErr) {
+		alt := filepath.Join(path, "problem_statement")
+		if _, altErr := os.Stat(alt); altErr == nil {
+			dir = alt
+		} else {
+			return nil, nil
+		}
+	}
+
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return nil, fmt.Errorf("statement/: %w", err)
+		return nil, fmt.Errorf("%s: %w", dir, err)
 	}
 
 	title := ""
@@ -531,10 +563,7 @@ func (p *ProblemLoader) statements(ctx context.Context, path string, spec *Speci
 			content = &ecmpb.Content{Value: &ecmpb.Content_Html{Html: string(raw)}}
 		case ".tex":
 			content = &ecmpb.Content{Value: &ecmpb.Content_Latex{Latex: string(raw)}}
-		case ".pdf":
-			return nil, errors.New("pdf statements are not supported/")
 		default:
-			// unknown extension
 			continue
 		}
 
@@ -594,12 +623,13 @@ func (p *ProblemLoader) attachments(ctx context.Context, path string) (attachmen
 }
 
 type groupYAML struct {
-	FullFeedback bool                   `yaml:"full_feedback"`
-	Scoring      map[string]interface{} `yaml:"scoring"` // "mode" or "aggregate"
+	FullFeedback bool              `yaml:"full_feedback"`
+	Scoring      map[string]string `yaml:"scoring"`
+	OnReject     string            `yaml:"on_reject"`
+	AcceptScore  int               `yaml:"accept_score"`
+	GraderFlags  string            `yaml:"grader_flags"`
 }
 
-// data/sample/               - sample cases
-// data/secret/*.in           - main tests
 func (p *ProblemLoader) testing(ctx context.Context, path string, spec *Specification) (testsets []*atlaspb.Testset, tests []*atlaspb.Test, err error) {
 	dataDir := filepath.Join(path, "data")
 	eg, ctx := errgroup.WithContext(ctx)
@@ -607,16 +637,9 @@ func (p *ProblemLoader) testing(ctx context.Context, path string, spec *Specific
 
 	// samples
 	sampleDir := filepath.Join(dataDir, "sample")
-	if dirExists(sampleDir) {
-		set := newSet(0, "sample", true, spec.Limits)
-		testsets = append(testsets, set)
-	}
 
 	// secret groups
 	secretDir := filepath.Join(dataDir, "secret")
-	if !dirExists(secretDir) {
-		return nil, nil, fmt.Errorf("data/secret directory is required")
-	}
 
 	entries, _ := os.ReadDir(secretDir)
 	subDirs := make([]os.DirEntry, 0)
@@ -626,8 +649,9 @@ func (p *ProblemLoader) testing(ctx context.Context, path string, spec *Specific
 		}
 	}
 
-	nextSetIdx := 1
-	processDir := func(dirPath, groupName string) error {
+	nextSetIdx := 0
+	var total float32
+	processDir := func(dirPath, groupName string, isExample bool) error {
 		// read test_group.yaml if present
 		cfg := groupYAML{}
 		cfgPath := filepath.Join(dirPath, "test_group.yaml")
@@ -639,10 +663,18 @@ func (p *ProblemLoader) testing(ctx context.Context, path string, spec *Specific
 			if err := yaml.Unmarshal(raw, &cfg); err != nil {
 				return err
 			}
+		} else if cfgPath = filepath.Join(dirPath, "testdata.yaml"); fileExists(cfgPath) {
+			raw, rErr := os.ReadFile(cfgPath)
+			if rErr != nil {
+				return rErr
+			}
+			if err := yaml.Unmarshal(raw, &cfg); err != nil {
+				return err
+			}
 		}
 
 		// build testset and apply yaml overrides
-		set := newSet(nextSetIdx, groupName, false, spec.Limits)
+		set := newSet(nextSetIdx, groupName, isExample, spec.Limits)
 		nextSetIdx++
 
 		if cfg.FullFeedback {
@@ -652,6 +684,14 @@ func (p *ProblemLoader) testing(ctx context.Context, path string, spec *Specific
 			set.ScoringMode = atlaspb.ScoringMode_WORST
 		}
 		if agg, ok := cfg.Scoring["aggregate"]; ok && agg == "min" {
+			set.ScoringMode = atlaspb.ScoringMode_WORST
+		}
+
+		if cfg.OnReject == "break" {
+			set.DependencyMode = atlaspb.Testset_FIRST_POINT
+		}
+
+		if cfg.GraderFlags == "min" {
 			set.ScoringMode = atlaspb.ScoringMode_WORST
 		}
 
@@ -669,6 +709,8 @@ func (p *ProblemLoader) testing(ctx context.Context, path string, spec *Specific
 			test := &atlaspb.Test{
 				TestsetId: set.GetId(),
 				Index:     int32(idx),
+				Example:   isExample,
+				Score:     float32(cfg.AcceptScore),
 			}
 			idx++
 
@@ -690,19 +732,28 @@ func (p *ProblemLoader) testing(ctx context.Context, path string, spec *Specific
 				}
 			}
 
+			total += test.Score
 			tests = append(tests, test)
 			return nil
 		})
 	}
 
-	if len(subDirs) == 0 {
-		if err := processDir(secretDir, "secret"); err != nil {
+	if dirExists(sampleDir) {
+		if err := processDir(sampleDir, "sample", true); err != nil {
 			return nil, nil, err
 		}
-	} else {
-		for _, dir := range subDirs {
-			if err := processDir(filepath.Join(secretDir, dir.Name()), dir.Name()); err != nil {
+	}
+
+	if dirExists(secretDir) {
+		if len(subDirs) == 0 {
+			if err := processDir(secretDir, "secret", false); err != nil {
 				return nil, nil, err
+			}
+		} else {
+			for _, dir := range subDirs {
+				if err := processDir(filepath.Join(secretDir, dir.Name()), dir.Name(), false); err != nil {
+					return nil, nil, err
+				}
 			}
 		}
 	}
@@ -711,18 +762,14 @@ func (p *ProblemLoader) testing(ctx context.Context, path string, spec *Specific
 		return nil, nil, err
 	}
 
-	var total float32
-	for _, t := range tests {
-		total += t.GetScore()
-	}
 	if total == 0 {
-		credit := 100.0
-		for i := range tests {
-			score := float32(math.Floor(credit / float64(len(tests)-i)))
-			tests[i].Score = score
-			credit -= float64(score)
+		var credit float64 = 100
+		for i, test := range tests {
+			test.Score = float32(math.Min(math.Floor(credit/float64(len(tests)-i)), credit))
+			credit -= float64(test.Score)
 		}
 	}
+
 	return testsets, tests, nil
 }
 
@@ -737,25 +784,30 @@ func dirExists(p string) bool {
 // helper to make a new set
 func newSet(idx int, name string, sample bool, lim Limits) *atlaspb.Testset {
 	ms := uint32(lim.TimeLimit * 1000)
+	if ms == 0 {
+		ms = 2_000
+	}
 	mem := uint64(lim.Memory) << 20
+	if mem == 0 {
+		mem = 256 << 20
+	}
 	fs := uint64(lim.OutputLimit) << 20
 	if fs == 0 {
 		fs = 512 << 20
 	}
 
 	ts := &atlaspb.Testset{
-		Id:            uuid.New().String(),
-		Index:         uint32(idx),
-		CpuLimit:      ms,
-		MemoryLimit:   mem,
-		FileSizeLimit: fs,
+		Id:             uuid.New().String(),
+		Index:          uint32(idx),
+		CpuLimit:       ms,
+		MemoryLimit:    mem,
+		FileSizeLimit:  fs,
+		ScoringMode:    atlaspb.ScoringMode_ALL,
+		FeedbackPolicy: atlaspb.FeedbackPolicy_ICPC_EXPANDED,
 	}
 	if sample {
 		ts.ScoringMode = atlaspb.ScoringMode_EACH
 		ts.FeedbackPolicy = atlaspb.FeedbackPolicy_COMPLETE
-	} else {
-		ts.ScoringMode = atlaspb.ScoringMode_ALL
-		ts.FeedbackPolicy = atlaspb.FeedbackPolicy_ICPC_EXPANDED
 	}
 	return ts
 }
